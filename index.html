@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>百年散歩 — 工芸と老舗をたずねる紀行</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600&family=Noto+Sans+JP:wght@300;400;500&family=EB+Garamond:ital@0;1&family=Yuji+Boku&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --indigo-deep: #0f1c30;
+    --indigo: #16283f;
+    --gold: #c9a24e;
+    --gold-soft: #9c8452;
+    --vermillion: #b7412c;
+    --paper: #f3efe4;
+    --paper-dim: #cfd4dd;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--indigo-deep);
+    background-image: radial-gradient(circle at 50% 0%, var(--indigo) 0%, var(--indigo-deep) 70%);
+    color: var(--paper);
+    font-family: "Noto Sans JP", sans-serif;
+    line-height: 1.9;
+  }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 8vh 6vw 12vh;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 10vh;
+  }
+
+  .kicker {
+    font-family: "EB Garamond", serif;
+    font-style: italic;
+    letter-spacing: 0.32em;
+    font-size: 0.75rem;
+    color: var(--gold);
+    text-transform: uppercase;
+  }
+
+  .seal {
+    position: relative;
+    z-index: 2;
+    width: 84px;
+    height: 84px;
+    margin: 0 auto 1.4em;
+    transform: rotate(-3deg) scale(1);
+    filter: drop-shadow(0 0 14px rgba(183, 65, 44, 0.45));
+    opacity: 1;
+    cursor: pointer;
+    transition: transform 2.8s cubic-bezier(0.2, 0.7, 0.2, 1), filter 2.8s ease, opacity 2.8s ease;
+  }
+
+  .seal:hover {
+    transform: rotate(-3deg) translateY(-4px) scale(1);
+  }
+
+  .seal.lifting {
+    transform: rotate(0deg) scale(6);
+    filter: drop-shadow(0 0 60px rgba(183, 65, 44, 0.9));
+    opacity: 0;
+  }
+
+  .fade-out {
+    transition: opacity 0.9s ease;
+    opacity: 0;
+  }
+
+  .seal-hint {
+    font-family: "EB Garamond", serif;
+    font-style: italic;
+    font-size: 0.75rem;
+    color: var(--gold-soft);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    margin: -1em 0 1.4em;
+  }
+
+  .seal:hover + .seal-hint {
+    opacity: 0.85;
+  }
+
+  h1 {
+    font-family: "Zen Old Mincho", serif;
+    font-weight: 600;
+    font-size: clamp(2.6rem, 8vw, 4.2rem);
+    letter-spacing: 0.12em;
+    color: var(--paper);
+    margin: 0.4em 0 0.3em;
+    text-shadow: 0 0 30px rgba(201, 162, 78, 0.15);
+  }
+
+  .divider {
+    width: 56px;
+    height: 1px;
+    background: var(--gold);
+    margin: 1.8em auto;
+  }
+
+  .tagline {
+    font-family: "Zen Old Mincho", serif;
+    font-size: 1.15rem;
+    color: var(--paper);
+    margin: 0 0 0.5em;
+    letter-spacing: 0.04em;
+  }
+
+  .tagline-en {
+    font-family: "EB Garamond", serif;
+    font-style: italic;
+    font-size: 1rem;
+    color: var(--gold);
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+
+  .mission {
+    font-size: 1.05rem;
+    color: var(--paper-dim);
+    text-align: center;
+  }
+
+  .mission p {
+    margin: 0 0 1.4em;
+  }
+
+  .mission-en {
+    margin-top: 3.5em;
+    padding-top: 2.8em;
+    border-top: 1px solid rgba(201, 162, 78, 0.25);
+    font-family: "EB Garamond", serif;
+    font-size: 1.15rem;
+    color: var(--gold);
+    text-align: center;
+    font-style: italic;
+  }
+
+  .mission-en p {
+    margin: 0 0 1.1em;
+  }
+
+  footer {
+    text-align: center;
+    margin-top: 10vh;
+    font-size: 0.8rem;
+    letter-spacing: 0.2em;
+    color: var(--gold-soft);
+    opacity: 0.8;
+  }
+
+  @media (max-width: 480px) {
+    .wrap { padding: 10vh 7vw 10vh; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <svg id="seal" class="seal" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" aria-label="百年散歩の印。押すとお店の紹介ページへ移動します" role="button" tabindex="0">
+        <rect x="6" y="6" width="88" height="88" rx="4" fill="#b7412c"/>
+        <rect x="13" y="13" width="74" height="74" rx="1" fill="none" stroke="#f3efe4" stroke-width="2"/>
+        <text x="31" y="42" text-anchor="middle" font-family="'Yuji Boku', serif" font-size="26" fill="#f3efe4">百</text>
+        <text x="69" y="42" text-anchor="middle" font-family="'Yuji Boku', serif" font-size="26" fill="#f3efe4">年</text>
+        <text x="31" y="80" text-anchor="middle" font-family="'Yuji Boku', serif" font-size="26" fill="#f3efe4">散</text>
+        <text x="69" y="80" text-anchor="middle" font-family="'Yuji Boku', serif" font-size="26" fill="#f3efe4">歩</text>
+      </svg>
+      <div id="restOfHeader">
+        <p class="seal-hint">印を押すと、お店へ向かいます</p>
+        <div class="kicker">Hyakunen Sanpo</div>
+        <h1>百年散歩</h1>
+        <div class="divider"></div>
+        <p class="tagline">工芸と老舗をたずねる紀行</p>
+        <p class="tagline-en">A Journey to Visit Crafts and Time-Honored Shops</p>
+      </div>
+    </header>
+
+    <main id="mainContent">
+      <section class="mission">
+        <p>一生をかけてつくられたものが、ここにあります。</p>
+        <p>百年続く工芸、代々受け継がれてきた和菓子の味。</p>
+        <p>その一つひとつに、つくり手の人生そのものが込められています。</p>
+        <p>百年散歩は、そんな本物に出会うための、小さな旅のきっかけです。</p>
+      </section>
+
+      <section class="mission-en">
+        <p>Here is something made with a lifetime of devotion.</p>
+        <p>A century-old craft. A sweet recipe passed down through generations.</p>
+        <p>Each one holds the maker's whole life within it.</p>
+        <p>Hyakunen Sanpo is a small invitation to come meet the real thing.</p>
+      </section>
+    </main>
+
+    <footer id="pageFooter">近日公開</footer>
+  </div>
+
+  <script>
+    const seal = document.getElementById('seal');
+    const fadeTargets = [
+      document.getElementById('restOfHeader'),
+      document.getElementById('mainContent'),
+      document.getElementById('pageFooter'),
+    ];
+    const goToShop = () => {
+      seal.classList.add('lifting');
+      fadeTargets.forEach((el) => el.classList.add('fade-out'));
+      setTimeout(() => {
+        window.location.href = 'shops/jizoyokan.html';
+      }, 2800);
+    };
+    seal.addEventListener('click', goToShop);
+    seal.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        goToShop();
+      }
+    });
+  </script>
+</body>
+</html>

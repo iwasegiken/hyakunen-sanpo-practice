@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>地蔵羊羹本舗 — 百年散歩</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@400;600&family=Noto+Sans+JP:wght@300;400;500&family=EB+Garamond:ital@0;1&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --indigo-deep: #0f1c30;
+    --indigo: #16283f;
+    --gold: #c9a24e;
+    --paper: #f3efe4;
+    --paper-dim: #cfd4dd;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--indigo-deep);
+    background-image: radial-gradient(circle at 50% 0%, var(--indigo) 0%, var(--indigo-deep) 70%);
+    color: var(--paper);
+    font-family: "Noto Sans JP", sans-serif;
+    line-height: 1.9;
+  }
+  .wrap {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 10vh 6vw 12vh;
+    text-align: center;
+  }
+  .back {
+    display: inline-block;
+    margin-bottom: 3em;
+    font-family: "EB Garamond", serif;
+    font-style: italic;
+    color: var(--gold);
+    text-decoration: none;
+    letter-spacing: 0.06em;
+  }
+  .back:hover { opacity: 0.7; }
+  h1 {
+    font-family: "Zen Old Mincho", serif;
+    font-weight: 600;
+    font-size: clamp(2.2rem, 7vw, 3.2rem);
+    letter-spacing: 0.1em;
+    margin: 0 0 0.3em;
+  }
+  .badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.6em;
+    margin-bottom: 2.2em;
+  }
+  .badge {
+    display: inline-block;
+    font-family: "EB Garamond", serif;
+    font-style: italic;
+    font-size: 0.85rem;
+    color: var(--gold);
+    border: 1px solid var(--gold);
+    border-radius: 999px;
+    padding: 0.3em 1.1em;
+    letter-spacing: 0.04em;
+  }
+  .badge.pending {
+    color: var(--paper-dim);
+    border-color: rgba(207, 212, 221, 0.4);
+  }
+  p { color: var(--paper-dim); font-size: 1.05rem; }
+  .info-table {
+    margin: 3em auto 0;
+    max-width: 420px;
+    text-align: left;
+    border-top: 1px solid rgba(201, 162, 78, 0.25);
+    padding-top: 2em;
+  }
+  .info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1em;
+    padding: 0.5em 0;
+    font-size: 0.95rem;
+  }
+  .info-row .label {
+    color: var(--gold);
+    font-family: "EB Garamond", serif;
+    font-style: italic;
+    white-space: nowrap;
+  }
+  .info-row .value {
+    color: var(--paper-dim);
+    text-align: right;
+  }
+  .photo-placeholder {
+    margin: 3em auto 0;
+    max-width: 480px;
+    border: 1px dashed rgba(201, 162, 78, 0.4);
+    border-radius: 4px;
+    padding: 2.5em 1.5em;
+    font-size: 0.9rem;
+    color: var(--gold-soft, #9c8452);
+    line-height: 1.8;
+  }
+  .note {
+    margin-top: 3em;
+    padding-top: 2em;
+    border-top: 1px solid rgba(201, 162, 78, 0.25);
+    font-size: 0.85rem;
+    color: var(--gold);
+    opacity: 0.8;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="../index.html">← 百年散歩へ戻る</a>
+    <h1>地蔵羊羹本舗</h1>
+    <div class="badge-row">
+      <span class="badge pending">創業年 — 確認中</span>
+      <span class="badge">和菓子</span>
+    </div>
+    <p>ここに、地蔵羊羹本舗さんの歴史・味・見どころの紹介文が入ります。</p>
+    <p>実際に訪れてはじめて分かる、その味と佇まい。</p>
+
+    <div class="info-table">
+      <div class="info-row"><span class="label">Area</span><span class="value">愛知県(米津駅 近く)</span></div>
+      <div class="info-row"><span class="label">Genre</span><span class="value">和菓子</span></div>
+      <div class="info-row"><span class="label">定休日</span><span class="value">月曜日</span></div>
+      <div class="info-row"><span class="label">掲載</span><span class="value">お店側の了解を得てから正式掲載予定</span></div>
+    </div>
+
+    <div class="photo-placeholder">
+      写真は、実際にお店へ伺い、自然光のもとで工程と完成品を撮影してから掲載します。<br>
+      (仕様書/仕様書.md「写真・映像方針」参照)
+    </div>
+
+    <div class="note">
+      このページは調査・企画段階の仮ページです。創業年の確認・お店への掲載許諾・実際の撮影が済むまでは、正式公開しません。
+    </div>
+  </div>
+</body>
+</html>
