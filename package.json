@@ -1,0 +1,9 @@
+{
+  "name": "hyakunen-sanpo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "百年散歩 — Railway用の静的サイト配信設定",
+  "scripts": {
+    "start": "npx --yes serve -s . -l $PORT"
+  }
+}
