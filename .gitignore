@@ -1,0 +1,6 @@
+# 保存データ(取材ノート・お問い合わせ)。個人情報が入るためGitHubへ送らない
+streamlit/data/
+
+# Pythonが自動で作る作業ファイル
+__pycache__/
+*.pyc

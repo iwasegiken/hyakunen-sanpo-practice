@@ -1,0 +1,352 @@
+import json
+import uuid
+from datetime import date, datetime
+from pathlib import Path
+
+import streamlit as st
+
+import style
+
+# ---------------------------------------------------------------
+# 保存先: このファイルと同じ場所の data/shops.json
+#   ※ data/ は .gitignore でGitに見せない(個人情報が入るため)
+# ---------------------------------------------------------------
+DATA_FILE = Path(__file__).parent / "data" / "shops.json"
+
+GENRES = ["和菓子", "工芸", "食", "その他"]
+
+# 確認表示で使う「項目名 → 保存キー」の対応
+LABELS = [
+    ("お店・工房の名前", "name"),
+    ("種類", "genre"),
+    ("創業年", "founded"),
+    ("店主・職人", "owner"),
+    ("掲載許諾", "permitted"),
+    ("許諾を得た日", "permitted_on"),
+    ("続いてきた理由", "reason"),
+    ("公式サイト", "site"),
+    ("公式通販", "shop_url"),
+    ("撮影メモ", "photo_memo"),
+    ("備考", "note"),
+]
+
+
+# ---------------------------------------------------------------
+# データの読み書き
+# ---------------------------------------------------------------
+def save_all(shops):
+    """取材ノートのリストを丸ごとファイルに書き戻す。"""
+    DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
+    DATA_FILE.write_text(
+        json.dumps(shops, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+
+
+def load_shops():
+    """保存済みの取材ノートを読み込む。
+
+    1件ずつを見分けるための id が無い記録には、その場で付けて保存し直す。
+    (第14課題の時点では id が無かったため。同じ名前のお店が2件あっても
+     取り違えないように、名前ではなく id で1件を指す。)
+    """
+    if not DATA_FILE.exists():
+        return []
+    try:
+        shops = json.loads(DATA_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+
+    changed = False
+    for shop in shops:
+        if not shop.get("id"):
+            shop["id"] = uuid.uuid4().hex[:8]
+            changed = True
+    if changed:
+        save_all(shops)
+    return shops
+
+
+def add_shop(shop):
+    """1件追加して保存する。"""
+    shops = load_shops()
+    shops.append(shop)
+    save_all(shops)
+
+
+def update_shop(shop_id, new_values):
+    """id で1件を探して、内容を書き換えて保存する。"""
+    shops = load_shops()
+    for shop in shops:
+        if shop.get("id") == shop_id:
+            shop.update(new_values)
+            shop["updated_at"] = datetime.now().isoformat(timespec="seconds")
+            save_all(shops)
+            return True
+    return False
+
+
+def delete_shop(shop_id):
+    """id で1件を消して保存する。"""
+    shops = load_shops()
+    remaining = [s for s in shops if s.get("id") != shop_id]
+    if len(remaining) == len(shops):
+        return False
+    save_all(remaining)
+    return True
+
+
+def find_shop(shops, shop_id):
+    for shop in shops:
+        if shop.get("id") == shop_id:
+            return shop
+    return None
+
+
+# ---------------------------------------------------------------
+# 入力フォーム(新規と編集で同じものを使う)
+# ---------------------------------------------------------------
+def shop_form(form_key, initial, submit_label):
+    """入力欄を並べて、押されたかどうかと入力内容を返す。"""
+    k = form_key  # 入力欄の名札。新規と編集で重ならないようにする
+
+    try:
+        default_day = date.fromisoformat(initial.get("permitted_on") or "")
+    except ValueError:
+        default_day = date.today()
+
+    genre_value = initial.get("genre", GENRES[0])
+    genre_index = GENRES.index(genre_value) if genre_value in GENRES else 0
+
+    with st.form(k, clear_on_submit=False, enter_to_submit=False, border=False):
+        name = st.text_input(
+            "お店・工房の名前", value=initial.get("name", ""),
+            placeholder="必須", key=f"{k}_name",
+        )
+        genre = st.selectbox("種類", GENRES, index=genre_index, key=f"{k}_genre")
+        founded = st.text_input(
+            "創業年", value=initial.get("founded", ""),
+            placeholder="例: 創業110年 / 1916年", key=f"{k}_founded",
+        )
+        owner = st.text_input(
+            "店主・職人のお名前", value=initial.get("owner", ""),
+            placeholder="次に伺った時に聞く", key=f"{k}_owner",
+        )
+        permitted = st.radio(
+            "掲載許諾", ["未", "済"], horizontal=True,
+            index=1 if initial.get("permitted") == "済" else 0, key=f"{k}_permitted",
+        )
+        permitted_on = st.date_input("許諾を得た日", value=default_day, key=f"{k}_day")
+        reason = st.text_area(
+            "続いてきた理由", value=initial.get("reason", ""),
+            placeholder="何を変え、何を変えずに残してきたか。聞いたことをそのまま書く(推測で補わない)",
+            key=f"{k}_reason",
+        )
+        site = st.text_input(
+            "公式サイト", value=initial.get("site", ""),
+            placeholder="なければ空欄", key=f"{k}_site",
+        )
+        shop_url = st.text_input(
+            "公式通販", value=initial.get("shop_url", ""),
+            placeholder="なければ空欄", key=f"{k}_shop_url",
+        )
+        photo_memo = st.text_area(
+            "撮影メモ", value=initial.get("photo_memo", ""),
+            placeholder="例: 午前の自然光がよい、工程の撮影は要相談", key=f"{k}_photo",
+        )
+        note = st.text_area("備考", value=initial.get("note", ""), key=f"{k}_note")
+        st.write("")
+        submitted = st.form_submit_button(submit_label, type="primary")
+
+    record = {
+        "name": name.strip(),
+        "genre": genre,
+        "founded": founded.strip(),
+        "owner": owner.strip(),
+        "permitted": permitted,
+        "permitted_on": permitted_on.isoformat() if permitted == "済" else "",
+        "reason": reason.strip(),
+        "site": site.strip(),
+        "shop_url": shop_url.strip(),
+        "photo_memo": photo_memo.strip(),
+        "note": note.strip(),
+    }
+    return submitted, record
+
+
+# ---------------------------------------------------------------
+# 確認の小窓
+# ---------------------------------------------------------------
+@st.dialog("この内容で記録します")
+def confirm_new_dialog(record):
+    style.record_rows(record, LABELS)
+    st.write("")
+    col_back, col_save = st.columns(2)
+    with col_back:
+        if st.button("書き直す", use_container_width=True):
+            st.session_state.pop("pending", None)
+            st.rerun()
+    with col_save:
+        if st.button("記録する", type="primary", use_container_width=True):
+            record["id"] = uuid.uuid4().hex[:8]
+            record["created_at"] = datetime.now().isoformat(timespec="seconds")
+            add_shop(record)
+            st.session_state.pop("pending", None)
+            st.session_state["flash"] = f"「{record['name']}」を記録しました"
+            st.session_state.seq += 1  # 入力欄を空に戻す
+            st.rerun()
+
+
+@st.dialog("この内容に書き換えます")
+def confirm_edit_dialog(shop_id, record):
+    style.record_rows(record, LABELS)
+    st.write("")
+    col_back, col_save = st.columns(2)
+    with col_back:
+        if st.button("やめる", use_container_width=True):
+            st.session_state.pop("pending_edit", None)
+            st.rerun()
+    with col_save:
+        if st.button("書き換える", type="primary", use_container_width=True):
+            update_shop(shop_id, record)
+            st.session_state.pop("pending_edit", None)
+            st.session_state.pop("editing", None)
+            st.session_state["flash"] = f"「{record['name']}」を書き換えました"
+            st.rerun()
+
+
+@st.dialog("この記録を削除します")
+def delete_dialog(shop):
+    st.markdown(f"#### {shop.get('name', '(名前なし)')}")
+    st.caption(
+        f"{shop.get('genre', '')}　{shop.get('founded') or '創業年 未記入'}"
+    )
+    st.warning("削除すると元に戻せません。")
+    col_back, col_del = st.columns(2)
+    with col_back:
+        if st.button("やめる", use_container_width=True):
+            st.session_state.pop("deleting", None)
+            st.rerun()
+    with col_del:
+        if st.button("削除する", type="primary", use_container_width=True):
+            delete_shop(shop["id"])
+            st.session_state.pop("deleting", None)
+            st.session_state["flash"] = f"「{shop.get('name', '')}」を削除しました"
+            st.rerun()
+
+
+# ---------------------------------------------------------------
+# 画面
+# ---------------------------------------------------------------
+st.set_page_config(page_title="百年散歩 運営ツール", page_icon="🏮")
+style.apply()
+
+if "seq" not in st.session_state:
+    st.session_state.seq = 0
+
+shops = load_shops()
+style.header("工芸と老舗をたずねる紀行 — 取材の記録", f"{len(shops)} 軒")
+
+# 記録・書き換え・削除の結果は、小さな通知と一行の報告だけで伝える
+if st.session_state.get("flash"):
+    message = st.session_state.pop("flash")
+    st.toast(message)
+    st.session_state["last_line"] = message
+if st.session_state.get("last_line"):
+    st.caption(st.session_state["last_line"])
+
+tab_new, tab_list, tab_contact = st.tabs(["取材ノート", "記録一覧", "お問い合わせ"])
+
+# ---------- 新しく記録する ----------
+with tab_new:
+    submitted, record = shop_form(
+        f"new_{st.session_state.seq}", {}, "確認する"
+    )
+    if submitted:
+        if not record["name"]:
+            st.error("お店・工房の名前を入力してください")
+        else:
+            st.session_state["pending"] = record
+            st.rerun()
+
+    if st.session_state.get("pending"):
+        confirm_new_dialog(st.session_state["pending"])
+
+    if st.button("新しく書く（入力欄を空にする）"):
+        st.session_state.seq += 1
+        st.session_state.pop("last_line", None)
+        st.rerun()
+
+# ---------- 一覧・編集・削除 ----------
+with tab_list:
+    editing_id = st.session_state.get("editing")
+
+    if editing_id:
+        # --- 編集画面 ---
+        target = find_shop(shops, editing_id)
+        if target is None:
+            st.session_state.pop("editing", None)
+            st.rerun()
+        else:
+            st.markdown(f"##### 「{target.get('name', '')}」を直す")
+            edited, new_values = shop_form(
+                f"edit_{editing_id}", target, "確認する"
+            )
+            if edited:
+                if not new_values["name"]:
+                    st.error("お店・工房の名前を入力してください")
+                else:
+                    st.session_state["pending_edit"] = new_values
+                    st.rerun()
+
+            if st.session_state.get("pending_edit"):
+                confirm_edit_dialog(editing_id, st.session_state["pending_edit"])
+
+            if st.button("一覧に戻る"):
+                st.session_state.pop("editing", None)
+                st.session_state.pop("pending_edit", None)
+                st.rerun()
+
+    elif not shops:
+        st.markdown(
+            '<div class="empty-note">まだ記録がありません。<br>'
+            '「取材ノート」から最初の一軒を記録してください。</div>',
+            unsafe_allow_html=True,
+        )
+
+    else:
+        # --- 一覧 --- 新しく記録したものが上に来るように並べ替える
+        for shop in sorted(shops, key=lambda s: s.get("created_at", ""), reverse=True):
+            permit = (
+                '<span class="ok">許諾済</span>'
+                if shop.get("permitted") == "済"
+                else '<span class="yet">許諾まだ</span>'
+            )
+            meta = "　・　".join(
+                [shop.get("genre", ""), shop.get("founded") or "創業年 未記入", permit]
+            )
+            col_body, col_edit, col_del = st.columns([6, 1.2, 1.2])
+            with col_body:
+                st.markdown(
+                    f'<div class="card"><div class="nm">{shop.get("name", "(名前なし)")}</div>'
+                    f'<div class="meta">{meta}</div></div>',
+                    unsafe_allow_html=True,
+                )
+            with col_edit:
+                if st.button("直す", key=f"edit_btn_{shop['id']}", use_container_width=True):
+                    st.session_state["editing"] = shop["id"]
+                    st.rerun()
+            with col_del:
+                if st.button("消す", key=f"del_btn_{shop['id']}", use_container_width=True):
+                    st.session_state["deleting"] = shop["id"]
+                    st.rerun()
+
+        if st.session_state.get("deleting"):
+            target = find_shop(shops, st.session_state["deleting"])
+            if target is None:
+                st.session_state.pop("deleting", None)
+            else:
+                delete_dialog(target)
+
+# ---------- お問い合わせ ----------
+with tab_contact:
+    st.caption("取材ノートが動いたら、同じ作り方でここを作ります。")
