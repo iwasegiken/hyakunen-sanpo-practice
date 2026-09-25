@@ -16,6 +16,18 @@ DATA_FILE = Path(__file__).parent / "data" / "shops.json"
 
 GENRES = ["和菓子", "工芸", "食", "その他"]
 
+# 長さの上限。入力は止めず、「確認する」を押したときに調べて赤字で伝える。
+LIMITS = [
+    ("name", "お店・工房の名前", 60),
+    ("founded", "創業年", 40),
+    ("owner", "店主・職人のお名前", 40),
+    ("site", "公式サイト", 200),
+    ("shop_url", "公式通販", 200),
+    ("reason", "続いてきた理由", 3000),
+    ("photo_memo", "撮影メモ", 2000),
+    ("note", "備考", 2000),
+]
+
 # 確認表示で使う「項目名 → 保存キー」の対応
 LABELS = [
     ("お店・工房の名前", "name"),
@@ -36,11 +48,19 @@ LABELS = [
 # データの読み書き
 # ---------------------------------------------------------------
 def save_all(shops):
-    """取材ノートのリストを丸ごとファイルに書き戻す。"""
+    """取材ノートのリストを丸ごとファイルに書き戻す。
+
+    いきなり本物のファイルへ書くと、途中で失敗したとき中身が壊れる。
+    (第14〜16課題の作業中に、実際に書き戻しでファイルを壊した経験あり)
+    まず隣に一時ファイルを書き、最後まで書けたら置き換える。
+    こうすれば、失敗しても元のファイルは無傷で残る。
+    """
     DATA_FILE.parent.mkdir(parents=True, exist_ok=True)
-    DATA_FILE.write_text(
+    tmp = DATA_FILE.with_suffix(".json.tmp")
+    tmp.write_text(
         json.dumps(shops, ensure_ascii=False, indent=2), encoding="utf-8"
     )
+    tmp.replace(DATA_FILE)
 
 
 def load_shops():
@@ -65,6 +85,9 @@ def load_shops():
     # 1件だけのとき、書き戻し方によってはリストではなく単体で保存されることがある
     if isinstance(shops, dict):
         shops = [shops]
+
+    # 記録の形になっていないもの(手で編集して壊れた等)は取り除く
+    shops = [s for s in shops if isinstance(s, dict)]
 
     changed = False
     for shop in shops:
@@ -110,6 +133,25 @@ def delete_shop(shop_id, owner):
         return False
     save_all([s for s in shops if s.get("id") != shop_id])
     return True
+
+
+def check_record(record):
+    """入力に問題がないか調べて、直してほしいことの一覧を返す。
+
+    問題が無ければ空のリスト。入力自体は止めないので、
+    長い文章を貼り付けてから直すこともできる。
+    """
+    problems = []
+    if not record["name"]:
+        problems.append("お店・工房の名前を入力してください")
+    for key, label, limit in LIMITS:
+        length = len(record.get(key, ""))
+        if length > limit:
+            problems.append(
+                f"「{label}」が長すぎます（{length}字／{limit}字まで）。"
+                f"{length - limit}字減らしてください"
+            )
+    return problems
 
 
 def find_shop(shops, shop_id):
@@ -176,6 +218,10 @@ def shop_form(form_key, initial, submit_label):
     genre_index = GENRES.index(genre_value) if genre_value in GENRES else 0
 
     with st.form(k, clear_on_submit=False, enter_to_submit=False, border=False):
+        # ここで max_chars は使わない。
+        #   黙って入力を拒むため、貼り付けが効かなくなり、しかも理由が分からない
+        #   (2026-09-25、岩瀬様が「名前にコピペが使えません」と発見)。
+        #   長さは「確認する」を押したときに LIMITS で調べ、赤字で理由を出す。
         name = st.text_input(
             "お店・工房の名前", value=initial.get("name", ""),
             placeholder="必須", key=f"{k}_name",
@@ -209,7 +255,8 @@ def shop_form(form_key, initial, submit_label):
         )
         photo_memo = st.text_area(
             "撮影メモ", value=initial.get("photo_memo", ""),
-            placeholder="例: 午前の自然光がよい、工程の撮影は要相談", key=f"{k}_photo",
+            placeholder="例: 午前の自然光がよい、工程の撮影は要相談",
+            key=f"{k}_photo",
         )
         note = st.text_area("備考", value=initial.get("note", ""), key=f"{k}_note")
         st.write("")
@@ -221,7 +268,10 @@ def shop_form(form_key, initial, submit_label):
         "founded": founded.strip(),
         "owner": owner.strip(),
         "permitted": permitted,
-        "permitted_on": permitted_on.isoformat() if permitted == "済" else "",
+        # 日付欄は空にもできるので、無いときに落ちないようにする
+        "permitted_on": (
+            permitted_on.isoformat() if permitted == "済" and permitted_on else ""
+        ),
         "reason": reason.strip(),
         "site": site.strip(),
         "shop_url": shop_url.strip(),
@@ -343,8 +393,10 @@ with tab_new:
         f"new_{st.session_state.seq}", {}, "確認する"
     )
     if submitted:
-        if not record["name"]:
-            st.error("お店・工房の名前を入力してください")
+        problems = check_record(record)
+        if problems:
+            for p in problems:
+                st.error(p)
         else:
             st.session_state["pending"] = record
             st.rerun()
@@ -373,8 +425,10 @@ with tab_list:
                 f"edit_{editing_id}", target, "確認する"
             )
             if edited:
-                if not new_values["name"]:
-                    st.error("お店・工房の名前を入力してください")
+                problems = check_record(new_values)
+                if problems:
+                    for p in problems:
+                        st.error(p)
                 else:
                     st.session_state["pending_edit"] = new_values
                     st.rerun()
@@ -402,13 +456,18 @@ with tab_list:
                 if shop.get("permitted") == "済"
                 else '<span class="yet">許諾まだ</span>'
             )
-            meta = "　・　".join(
-                [shop.get("genre", ""), shop.get("founded") or "創業年 未記入", permit]
-            )
+            # 入力された文字はHTMLの命令にならないよう style.safe() を通す。
+            # permit だけは自分で書いたタグなので、そのまま使う。
+            meta = "　・　".join([
+                style.safe(shop.get("genre", "")),
+                style.safe(shop.get("founded") or "創業年 未記入"),
+                permit,
+            ])
             col_body, col_edit, col_del = st.columns([6, 1.2, 1.2])
             with col_body:
                 st.markdown(
-                    f'<div class="card"><div class="nm">{shop.get("name", "(名前なし)")}</div>'
+                    f'<div class="card"><div class="nm">'
+                    f'{style.safe(shop.get("name") or "(名前なし)")}</div>'
                     f'<div class="meta">{meta}</div></div>',
                     unsafe_allow_html=True,
                 )

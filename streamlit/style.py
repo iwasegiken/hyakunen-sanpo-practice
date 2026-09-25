@@ -238,10 +238,26 @@ def header(subtitle, count_text):
         f'<div class="kicker">Hyakunen Sanpo</div>'
         f"<h1>百年散歩 運営ツール</h1>"
         f"</div></div>"
-        f'<div class="brand-sub"><span>{subtitle}</span>'
-        f'<span class="count">{count_text}</span></div>'
+        f'<div class="brand-sub"><span>{safe(subtitle)}</span>'
+        f'<span class="count">{safe(count_text)}</span></div>'
     )
     st.markdown(html, unsafe_allow_html=True)
+
+
+def safe(text):
+    """入力された文字を、HTMLの「命令」ではなく「ただの文字」として扱う。
+
+    この画面はHTMLを自分で組み立てて描いているため、入力に <b> や <img> が
+    混ざるとタグとして解釈されてしまう(第38課題で学んだXSSと同じ形)。
+    < > & " を別の書き方に置き換えて、見たままの文字として表示させる。
+    """
+    return (
+        str(text)
+        .replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
+    )
 
 
 def record_rows(rec, labels):
@@ -250,6 +266,9 @@ def record_rows(rec, labels):
     for label, key in labels:
         value = rec.get(key, "")
         cls = "v" if value else "v empty"
-        shown = value if value else "—"
-        rows.append(f'<div class="rec-row"><div class="k">{label}</div><div class="{cls}">{shown}</div></div>')
+        shown = safe(value) if value else "—"
+        rows.append(
+            f'<div class="rec-row"><div class="k">{safe(label)}</div>'
+            f'<div class="{cls}">{shown}</div></div>'
+        )
     st.markdown("".join(rows), unsafe_allow_html=True)
