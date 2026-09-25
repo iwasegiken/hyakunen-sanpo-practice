@@ -5,6 +5,7 @@ from pathlib import Path
 
 import streamlit as st
 
+import auth
 import style
 
 # ---------------------------------------------------------------
@@ -52,9 +53,18 @@ def load_shops():
     if not DATA_FILE.exists():
         return []
     try:
-        shops = json.loads(DATA_FILE.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return []
+        # utf-8-sig: ファイルの先頭に見えない印(BOM)が付いていても読めるようにする。
+        # PowerShellなどで手で書き換えると付くことがあるため。
+        shops = json.loads(DATA_FILE.read_text(encoding="utf-8-sig"))
+    except (json.JSONDecodeError, OSError) as e:
+        # 黙って空を返すと「データが消えた」ようにしか見えない。理由を画面に出す。
+        st.error(f"記録の読み込みに失敗しました: {e}")
+        st.caption(f"ファイル: {DATA_FILE}")
+        st.stop()
+
+    # 1件だけのとき、書き戻し方によってはリストではなく単体で保存されることがある
+    if isinstance(shops, dict):
+        shops = [shops]
 
     changed = False
     for shop in shops:
@@ -73,11 +83,18 @@ def add_shop(shop):
     save_all(shops)
 
 
-def update_shop(shop_id, new_values):
-    """id で1件を探して、内容を書き換えて保存する。"""
+def update_shop(shop_id, new_values, owner):
+    """id で1件を探して、内容を書き換えて保存する。
+
+    owner(いま入っている人)と記録の author が違えば、何もしない。
+    画面に出さないだけでは守りとして足りない。画面は作り変えられるので、
+    実際に書き換える側でも持ち主を確かめる。
+    """
     shops = load_shops()
     for shop in shops:
         if shop.get("id") == shop_id:
+            if shop.get("author") != owner:
+                return False
             shop.update(new_values)
             shop["updated_at"] = datetime.now().isoformat(timespec="seconds")
             save_all(shops)
@@ -85,13 +102,13 @@ def update_shop(shop_id, new_values):
     return False
 
 
-def delete_shop(shop_id):
-    """id で1件を消して保存する。"""
+def delete_shop(shop_id, owner):
+    """id で1件を消して保存する。持ち主でなければ消さない。"""
     shops = load_shops()
-    remaining = [s for s in shops if s.get("id") != shop_id]
-    if len(remaining) == len(shops):
+    target = next((s for s in shops if s.get("id") == shop_id), None)
+    if target is None or target.get("author") != owner:
         return False
-    save_all(remaining)
+    save_all([s for s in shops if s.get("id") != shop_id])
     return True
 
 
@@ -100,6 +117,47 @@ def find_shop(shops, shop_id):
         if shop.get("id") == shop_id:
             return shop
     return None
+
+
+# ---------------------------------------------------------------
+# ログイン画面
+# ---------------------------------------------------------------
+def login_screen():
+    style.header("工芸と老舗をたずねる紀行 — 取材の記録", "ようこそ")
+    st.caption("取材の記録は、書いた本人だけが見られます。")
+
+    tab_login, tab_register = st.tabs(["入る", "はじめて使う"])
+
+    with tab_login:
+        with st.form("login_form", enter_to_submit=False, border=False):
+            name = st.text_input("お名前", key="login_name")
+            password = st.text_input("合言葉", type="password", key="login_pw")
+            if st.form_submit_button("入る", type="primary"):
+                if auth.verify(name, password):
+                    st.session_state["user"] = name.strip()
+                    st.rerun()
+                else:
+                    # どちらが違うかは言わない。
+                    # 「お名前は合っている」と教えると、名前当てのヒントになるため。
+                    st.error("お名前か合言葉が違います")
+
+    with tab_register:
+        with st.form("register_form", enter_to_submit=False, border=False):
+            new_name = st.text_input("お名前", key="reg_name")
+            new_password = st.text_input(
+                "合言葉", type="password", key="reg_pw",
+                placeholder=f"{auth.MIN_PASSWORD}文字以上",
+            )
+            if st.form_submit_button("登録する", type="primary"):
+                ok, message = auth.register(new_name, new_password)
+                if ok:
+                    st.success(message + "。「入る」から入ってください。")
+                else:
+                    st.error(message)
+        st.caption(
+            "合言葉そのものは保存しません。変換した結果だけを保存するので、"
+            "忘れても誰にも調べられません(その場合は登録し直しになります)。"
+        )
 
 
 # ---------------------------------------------------------------
@@ -188,6 +246,7 @@ def confirm_new_dialog(record):
     with col_save:
         if st.button("記録する", type="primary", use_container_width=True):
             record["id"] = uuid.uuid4().hex[:8]
+            record["author"] = st.session_state["user"]   # 書いた人
             record["created_at"] = datetime.now().isoformat(timespec="seconds")
             add_shop(record)
             st.session_state.pop("pending", None)
@@ -207,7 +266,9 @@ def confirm_edit_dialog(shop_id, record):
             st.rerun()
     with col_save:
         if st.button("書き換える", type="primary", use_container_width=True):
-            update_shop(shop_id, record)
+            if not update_shop(shop_id, record, st.session_state["user"]):
+                st.error("この記録は書き換えられません")
+                return
             st.session_state.pop("pending_edit", None)
             st.session_state.pop("editing", None)
             st.session_state["flash"] = f"「{record['name']}」を書き換えました"
@@ -228,7 +289,9 @@ def delete_dialog(shop):
             st.rerun()
     with col_del:
         if st.button("削除する", type="primary", use_container_width=True):
-            delete_shop(shop["id"])
+            if not delete_shop(shop["id"], st.session_state["user"]):
+                st.error("この記録は削除できません")
+                return
             st.session_state.pop("deleting", None)
             st.session_state["flash"] = f"「{shop.get('name', '')}」を削除しました"
             st.rerun()
@@ -243,8 +306,26 @@ style.apply()
 if "seq" not in st.session_state:
     st.session_state.seq = 0
 
-shops = load_shops()
+# ログインしていない人は、ここから先へ進めない
+if not st.session_state.get("user"):
+    login_screen()
+    st.stop()
+
+user = st.session_state["user"]
+
+# 自分が書いた記録だけを扱う。以降 shops は「自分のもの」しか入っていない。
+shops = [s for s in load_shops() if s.get("author") == user]
+
 style.header("工芸と老舗をたずねる紀行 — 取材の記録", f"{len(shops)} 軒")
+
+col_who, col_out = st.columns([5, 1])
+with col_who:
+    st.caption(f"{user} さんとして入っています")
+with col_out:
+    if st.button("出る", use_container_width=True):
+        for key in ["user", "editing", "pending", "pending_edit", "deleting", "last_line"]:
+            st.session_state.pop(key, None)
+        st.rerun()
 
 # 記録・書き換え・削除の結果は、小さな通知と一行の報告だけで伝える
 if st.session_state.get("flash"):
