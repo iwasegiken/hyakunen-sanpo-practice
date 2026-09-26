@@ -16,6 +16,10 @@ DATA_FILE = Path(__file__).parent / "data" / "shops.json"
 
 GENRES = ["和菓子", "工芸", "食", "その他"]
 
+# 一覧を1ページに何件出すか（第43課題）。
+# 全件を一度に出すと、件数に比例して画面部品が増えて固まるため区切る。
+PER_PAGE = 20
+
 # 長さの上限。入力は止めず、「確認する」を押したときに調べて赤字で伝える。
 LIMITS = [
     ("name", "お店・工房の名前", 60),
@@ -450,7 +454,41 @@ with tab_list:
 
     else:
         # --- 一覧 --- 新しく記録したものが上に来るように並べ替える
-        for shop in sorted(shops, key=lambda s: s.get("created_at", ""), reverse=True):
+        ordered = sorted(shops, key=lambda s: s.get("created_at", ""), reverse=True)
+
+        # ページ送り（第43課題）
+        #   以前は全件をそのまま画面に出していた。1件につき画面部品が6個できるため、
+        #   1万件なら6万個、10万件なら60万個になり、ブラウザが固まる。
+        #   1ページ20件に区切れば、何件あっても画面部品は120個で頭打ちになる。
+        #   人間はそもそも1万件を一度に見られないので、使う人にとっても親切。
+        total = len(ordered)
+        last_page = max(1, -(-total // PER_PAGE))   # 切り上げ
+        if st.session_state.get("page", 1) > last_page:
+            st.session_state["page"] = last_page
+        page = st.session_state.get("page", 1)
+        start = (page - 1) * PER_PAGE
+        showing = ordered[start:start + PER_PAGE]
+
+        if last_page > 1:
+            col_prev, col_mid, col_next = st.columns([1, 3, 1])
+            with col_prev:
+                if st.button("← 前", disabled=(page <= 1), use_container_width=True):
+                    st.session_state["page"] = page - 1
+                    st.rerun()
+            with col_mid:
+                st.markdown(
+                    f'<div style="text-align:center;font-size:.8rem;opacity:.7">'
+                    f'{start + 1}〜{min(start + PER_PAGE, total)} 件目 ／ 全 {total} 軒'
+                    f'（{page} / {last_page} ページ）</div>',
+                    unsafe_allow_html=True,
+                )
+            with col_next:
+                if st.button("次 →", disabled=(page >= last_page), use_container_width=True):
+                    st.session_state["page"] = page + 1
+                    st.rerun()
+            st.write("")
+
+        for shop in showing:
             permit = (
                 '<span class="ok">許諾済</span>'
                 if shop.get("permitted") == "済"
